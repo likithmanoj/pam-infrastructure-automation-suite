@@ -16,4 +16,5 @@ override.tf.json
 # Terraform CLI configuration lock
 .terraform.lock.hcl
 
+# env files containing sensitive data
 *.env
