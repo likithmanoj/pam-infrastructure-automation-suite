@@ -1,4 +1,4 @@
-#This is the start of the main file Day1 streak
+#This is the start of the main file Day2 streak
 resource "aws_iam_user" "nhi_automation_runner" {
 
   /*
@@ -14,4 +14,8 @@ resource "aws_iam_user" "nhi_automation_runner" {
   tags = {
     Environment = "Development"
   }
+}
+
+resource "aws_iam_access_key" "nhi_runner_keys" {
+  user = aws_iam_user.nhi_automation_runner.name
 }
