@@ -1,0 +1,19 @@
+# Local .terraform execution directory
+.terraform/
+
+# Local state tracking files (The Source of Truth)
+*.tfstate
+*.tfstate.*
+
+# Crash logs
+crash.log
+crash.*.log
+
+# Override files
+override.tf
+override.tf.json
+
+# Terraform CLI configuration lock
+.terraform.lock.hcl
+
+*.env
