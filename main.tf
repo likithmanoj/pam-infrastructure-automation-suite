@@ -1,4 +1,5 @@
-#This is the start of the main file Day2 streak
+#This is the start of the main file Day3 streak
+#Creating the IAM user using variable placeholder
 resource "aws_iam_user" "nhi_automation_runner" {
 
   /*
@@ -8,11 +9,12 @@ resource "aws_iam_user" "nhi_automation_runner" {
   Compliance: SOP-IAM-01 / Least Privilege Baseline
   */
 
-  name = "nhi-automation-runner"
+  name = "nhi-automation-runner-${var.environment}"
   path = "/system/"
+  force_destroy = true
 
   tags = {
-    Environment = "Development"
+    Environment = var.environment
   }
 }
 
