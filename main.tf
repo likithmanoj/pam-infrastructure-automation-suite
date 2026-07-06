@@ -9,8 +9,8 @@ resource "aws_iam_user" "nhi_automation_runner" {
   Compliance: SOP-IAM-01 / Least Privilege Baseline
   */
 
-  name = "nhi-automation-runner-${var.environment}"
-  path = "/system/"
+  name          = "nhi-automation-runner-${var.environment}"
+  path          = "/system/"
   force_destroy = true
 
   tags = {
