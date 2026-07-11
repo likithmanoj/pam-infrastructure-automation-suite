@@ -1,4 +1,3 @@
-#This is the start of the main file Day3 streak
 #Creating the IAM user using variable placeholder
 resource "aws_iam_user" "nhi_automation_runner" {
 
@@ -50,4 +49,23 @@ resource "aws_iam_policy" "policy" {
 resource "aws_iam_user_policy_attachment" "nhi_runner_policy_attachment" {
   user       = aws_iam_user.nhi_automation_runner.name
   policy_arn = aws_iam_policy.policy.arn
+}
+
+resource "aws_s3_bucket" "nhi_automation_bucket" {
+
+  bucket = "${var.project_name}-${var.environment}-bucket"
+  tags = {
+    Name = "${var.project_name}-${var.environment}-bucket"
+    Environment = var.environment
+  }
+
+}
+
+resource "aws_s3_bucket_public_access_block" "nhi_automation_bucket_privacy" {
+  bucket = aws_s3_bucket.nhi_automation_bucket.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
 }
