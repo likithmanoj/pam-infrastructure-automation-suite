@@ -22,6 +22,8 @@ resource "aws_iam_access_key" "nhi_runner_keys" {
   user = aws_iam_user.nhi_automation_runner.name
 }
 
+data "aws_partition" "current" {}
+
 resource "aws_iam_policy" "policy" {
   name        = "${var.project_name}-${var.environment}-s3-policy"
   path        = "/"
@@ -33,10 +35,14 @@ resource "aws_iam_policy" "policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Action   = ["s3:ListAllMyBuckets", "s3:ListBucket"]
-        Effect   = "Allow"
-        Resource = "*"
-      },
+        # Allow the automation runner to perform S3 actions on the specified bucket when Python is run we need GetObject and PutObject permissions to read and write files to the S3 bucket
+        Action = ["s3:ListAllMyBuckets", "s3:ListBucket","s3:GetObject", "s3:PutObject"]
+        Effect = "Allow"
+        Resource = [
+          "arn:${data.aws_partition.current.partition}:s3:::${var.project_name}-${var.environment}-bucket",
+          "arn:${data.aws_partition.current.partition}:s3:::${var.project_name}-${var.environment}-bucket/*"
+        ]
+      }
     ]
   })
 }
