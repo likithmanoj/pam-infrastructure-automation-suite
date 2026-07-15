@@ -18,3 +18,5 @@ override.tf.json
 
 # env files containing sensitive data
 *.env
+
+venv/
