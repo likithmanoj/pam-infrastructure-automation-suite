@@ -35,7 +35,7 @@ resource "aws_iam_policy" "policy" {
     Statement = [
       {
         # Allow the automation runner to perform S3 actions on the specified bucket when Python is run we need GetObject and PutObject permissions to read and write files to the S3 bucket
-        Action = ["s3:ListAllMyBuckets", "s3:ListBucket","s3:GetObject", "s3:PutObject"]
+        Action = ["s3:CreateBucket", "s3:ListAllMyBuckets", "s3:ListBucket", "s3:GetObject", "s3:PutObject"]
         Effect = "Allow"
         Resource = [
           "arn:${data.aws_partition.current.partition}:s3:::${var.project_name}-${var.environment}-bucket",
@@ -53,9 +53,10 @@ resource "aws_iam_user_policy_attachment" "nhi_runner_policy_attachment" {
 
 resource "aws_s3_bucket" "nhi_automation_bucket" {
 
-  bucket = "${var.project_name}-${var.environment}-bucket"
+  bucket        = "${var.project_name}-${var.environment}-bucket"
+  force_destroy = true
   tags = {
-    Name = "${var.project_name}-${var.environment}-bucket"
+    Name        = "${var.project_name}-${var.environment}-bucket"
     Environment = var.environment
   }
 
