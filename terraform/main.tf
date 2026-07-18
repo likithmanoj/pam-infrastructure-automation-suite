@@ -71,7 +71,7 @@ resource "aws_s3_bucket_public_access_block" "nhi_automation_bucket_privacy" {
   restrict_public_buckets = true
 }
 
-data "aws_caller_identity" "current_user" {}
+#data "aws_caller_identity" "current_user" {} wrote it when I wanted to check #   AWS = "arn:aws:iam::${data.aws_caller_identity.current_user.account_id}:user/system/${aws_iam_user.nhi_automation_runner.name}"
 
 resource "aws_iam_role" "nhi_automation_runner_role" {
   name = "nhi-automation-runner-role-${var.environment}"
