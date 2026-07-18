@@ -83,7 +83,9 @@ resource "aws_iam_role" "nhi_automation_runner_role" {
         Effect = "Allow"
         Sid    = ""
         Principal = {
-          AWS = "arn:aws:iam::${data.aws_caller_identity.current_user.account_id}:user/${aws_iam_user.nhi_automation_runner.name}"
+          #   AWS = "arn:aws:iam::${data.aws_caller_identity.current_user.account_id}:user/system/${aws_iam_user.nhi_automation_runner.name}"
+          # arn was first written to encode the arn but then it could also be directly pointed to the user
+          AWS = aws_iam_user.nhi_automation_runner.arn
         }
       },
     ]
