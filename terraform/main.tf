@@ -70,3 +70,28 @@ resource "aws_s3_bucket_public_access_block" "nhi_automation_bucket_privacy" {
   ignore_public_acls      = true
   restrict_public_buckets = true
 }
+
+data "aws_caller_identity" "current_user" {}
+
+resource "aws_iam_role" "nhi_automation_runner_role" {
+  name = "nhi-automation-runner-role-${var.environment}"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Sid    = ""
+        Principal = {
+          AWS = "arn:aws:iam::${data.aws_caller_identity.current_user.account_id}:user/${aws_iam_user.nhi_automation_runner.name}"
+        }
+      },
+    ]
+  })
+
+}
+
+resource "aws_iam_role_policy_attachment" "nhi_automation_runner_role_policy_attachment" {
+  role       = aws_iam_role.nhi_automation_runner_role.name
+  policy_arn = aws_iam_policy.policy.arn
+}
