@@ -17,16 +17,19 @@ resource "aws_iam_user" "nhi_automation_runner" {
   }
 }
 
+# Temporary implementation.
+# This resource will be removed once the application authenticates using IAM Roles and AWS STS.
+# Removing long-lived access keys prevents sensitive credentials from being stored in Terraform state.
 resource "aws_iam_access_key" "nhi_runner_keys" {
   user = aws_iam_user.nhi_automation_runner.name
 }
 
 data "aws_partition" "current" {}
 
-resource "aws_iam_policy" "policy" {
+resource "aws_iam_policy" "role_policy" {
   name        = "${var.project_name}-${var.environment}-s3-policy"
   path        = "/"
-  description = "IAM policy for automation runner to access S3 buckets in ${var.environment} environment"
+  description = "IAM policy for automation runner role to access S3 buckets in ${var.environment} environment"
 
   # Terraform's "jsonencode" function converts a
   # Terraform expression result to valid JSON syntax.
@@ -44,11 +47,31 @@ resource "aws_iam_policy" "policy" {
       }
     ]
   })
+} #Replaced the entire code with below policy to remove the IAM user credential and give it least privilege to the IAM user by creating a role and let the iam policy to attach to that role as in fit into that role
+#policy should exist as the role needs to have the S3 permissions
+
+resource "aws_iam_policy" "nhi_user_sts_policy" {
+  name        = "${var.project_name}-${var.environment}-sts-assume-role-policy"
+  path        = "/"
+  description = "IAM policy allowing the automation runner to assume the automation IAM role."
+  # Terraform's "jsonencode" function converts a
+  # Terraform expression result to valid JSON syntax.
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        #Removed S3 actions to maintain least privilege to the Python user and resource is now pointing to role created.
+        Action = ["sts:AssumeRole"]
+        Effect = "Allow"
+        Resource = aws_iam_role.nhi_automation_runner_role.arn
+      }
+    ]
+  })
 }
 
 resource "aws_iam_user_policy_attachment" "nhi_runner_policy_attachment" {
   user       = aws_iam_user.nhi_automation_runner.name
-  policy_arn = aws_iam_policy.policy.arn
+  policy_arn = aws_iam_policy.nhi_user_sts_policy.arn
 }
 
 resource "aws_s3_bucket" "nhi_automation_bucket" {
@@ -62,6 +85,21 @@ resource "aws_s3_bucket" "nhi_automation_bucket" {
 
 }
 
+
+#Added this below block to add Server side encryption - because on the disk and at rest the data needs to be encrypted, but for prod purposes we can use AWS KMS, for now we are just utilizing the AES256 algorithm instead of KMS
+#Why because of the data at rest is supposed to be encrypted - and Data at movement is projected by HTTPS and other networking components.
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "encryption_resource"{
+  bucket = aws_s3_bucket.nhi_automation_bucket.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm     = "AES256"
+    }
+  }
+
+}
+
 resource "aws_s3_bucket_public_access_block" "nhi_automation_bucket_privacy" {
   bucket = aws_s3_bucket.nhi_automation_bucket.id
 
@@ -69,4 +107,49 @@ resource "aws_s3_bucket_public_access_block" "nhi_automation_bucket_privacy" {
   block_public_policy     = true
   ignore_public_acls      = true
   restrict_public_buckets = true
+}
+
+#data "aws_caller_identity" "current_user" {} wrote it when I wanted to pull data #   AWS = "arn:aws:iam::${data.aws_caller_identity.current_user.account_id}:user/system/${aws_iam_user.nhi_automation_runner.name}"
+
+# resource "aws_iam_role" "nhi_automation_runner_role" {
+#   name = "nhi-automation-runner-role-${var.environment}"
+#   assume_role_policy = jsonencode({
+#     Version = "2012-10-17"
+#     Statement = [
+#       {
+#         Action = "sts:AssumeRole"
+#         Effect = "Allow"
+#         Sid    = ""
+#         Principal = {
+#           #   AWS = "arn:aws:iam::${data.aws_caller_identity.current_user.account_id}:user/system/${aws_iam_user.nhi_automation_runner.name}"
+#           # arn was first written to encode the arn but then it could also be directly pointed to the user
+#           AWS = aws_iam_user.nhi_automation_runner.arn
+#         }
+#       },
+#     ]
+#   })
+
+# }#Rewrote the role below to not enforce jsonencode as we could write policy document
+
+data "aws_iam_policy_document" "instance_assume_role_policy"{
+statement {
+  actions = ["sts:AssumeRole"]
+  effect = "Allow"
+
+principals{
+    type = "AWS"
+    identifiers = [aws_iam_user.nhi_automation_runner.arn]
+}
+}
+}
+
+resource "aws_iam_role" "nhi_automation_runner_role"{
+    name = "nhi-automation-runner-role-${var.environment}"
+    path = "/"
+    assume_role_policy = data.aws_iam_policy_document.instance_assume_role_policy.json
+}
+
+resource "aws_iam_role_policy_attachment" "nhi_automation_runner_role_attachment" {
+  role       = aws_iam_role.nhi_automation_runner_role.name
+  policy_arn = aws_iam_policy.role_policy.arn
 }

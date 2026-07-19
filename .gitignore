@@ -22,3 +22,5 @@ override.tf.json
 venv/
 
 .DS_Store
+
+experiments/
