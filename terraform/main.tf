@@ -17,40 +17,43 @@ resource "aws_iam_user" "nhi_automation_runner" {
   }
 }
 
+# Temporary implementation.
+# This resource will be removed once the application authenticates using IAM Roles and AWS STS.
+# Removing long-lived access keys prevents sensitive credentials from being stored in Terraform state.
 resource "aws_iam_access_key" "nhi_runner_keys" {
   user = aws_iam_user.nhi_automation_runner.name
 }
 
 data "aws_partition" "current" {}
 
-# resource "aws_iam_policy" "policy" {
-#   name        = "${var.project_name}-${var.environment}-s3-policy"
-#   path        = "/"
-#   description = "IAM policy for automation runner to access S3 buckets in ${var.environment} environment"
-
-#   # Terraform's "jsonencode" function converts a
-#   # Terraform expression result to valid JSON syntax.
-#   policy = jsonencode({
-#     Version = "2012-10-17"
-#     Statement = [
-#       {
-#         # Allow the automation runner to perform S3 actions on the specified bucket when Python is run we need GetObject and PutObject permissions to read and write files to the S3 bucket
-#         Action = ["s3:ListBucket", "s3:GetObject", "s3:PutObject"]
-#         Effect = "Allow"
-#         Resource = [
-#           "arn:${data.aws_partition.current.partition}:s3:::${var.project_name}-${var.environment}-bucket",
-#           "arn:${data.aws_partition.current.partition}:s3:::${var.project_name}-${var.environment}-bucket/*"
-#         ]
-#       }
-#     ]
-#   })
-# } Replaced the entire code with below policy to remove the IAM user credential and give it least privilege to the IAM user by creating a role and let the iam policy to attach to that role as in fit into that role
-
-resource "aws_iam_policy" "nhi_user_sts_policy" {
+resource "aws_iam_policy" "role_policy" {
   name        = "${var.project_name}-${var.environment}-s3-policy"
   path        = "/"
-  description = "IAM policy for automation runner to access S3 buckets in ${var.environment} environment"
+  description = "IAM policy for automation runner role to access S3 buckets in ${var.environment} environment"
 
+  # Terraform's "jsonencode" function converts a
+  # Terraform expression result to valid JSON syntax.
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        # Allow the automation runner to perform S3 actions on the specified bucket when Python is run we need GetObject and PutObject permissions to read and write files to the S3 bucket
+        Action = ["s3:ListBucket", "s3:GetObject", "s3:PutObject"]
+        Effect = "Allow"
+        Resource = [
+          "arn:${data.aws_partition.current.partition}:s3:::${var.project_name}-${var.environment}-bucket",
+          "arn:${data.aws_partition.current.partition}:s3:::${var.project_name}-${var.environment}-bucket/*"
+        ]
+      }
+    ]
+  })
+} #Replaced the entire code with below policy to remove the IAM user credential and give it least privilege to the IAM user by creating a role and let the iam policy to attach to that role as in fit into that role
+#policy should exist as the role needs to have the S3 permissions
+
+resource "aws_iam_policy" "nhi_user_sts_policy" {
+  name        = "${var.project_name}-${var.environment}-sts-assume-role-policy"
+  path        = "/"
+  description = "IAM policy allowing the automation runner to assume the automation IAM role."
   # Terraform's "jsonencode" function converts a
   # Terraform expression result to valid JSON syntax.
   policy = jsonencode({
@@ -82,6 +85,10 @@ resource "aws_s3_bucket" "nhi_automation_bucket" {
 
 }
 
+
+#Added this below block to add Server side encryption - because on the disk and at rest the data needs to be encrypted, but for prod purposes we can use AWS KMS, for now we are just utilizing the AES256 algorithm instead of KMS
+#Why because of the data at rest is supposed to be encrypted - and Data at movement is projected by HTTPS and other networking components.
+
 resource "aws_s3_bucket_server_side_encryption_configuration" "encryption_resource"{
   bucket = aws_s3_bucket.nhi_automation_bucket.id
 
@@ -102,7 +109,7 @@ resource "aws_s3_bucket_public_access_block" "nhi_automation_bucket_privacy" {
   restrict_public_buckets = true
 }
 
-#data "aws_caller_identity" "current_user" {} wrote it when I wanted to check #   AWS = "arn:aws:iam::${data.aws_caller_identity.current_user.account_id}:user/system/${aws_iam_user.nhi_automation_runner.name}"
+#data "aws_caller_identity" "current_user" {} wrote it when I wanted to pull data #   AWS = "arn:aws:iam::${data.aws_caller_identity.current_user.account_id}:user/system/${aws_iam_user.nhi_automation_runner.name}"
 
 # resource "aws_iam_role" "nhi_automation_runner_role" {
 #   name = "nhi-automation-runner-role-${var.environment}"
@@ -122,7 +129,8 @@ resource "aws_s3_bucket_public_access_block" "nhi_automation_bucket_privacy" {
 #     ]
 #   })
 
-# }
+# }#Rewrote the role below to not enforce jsonencode as we could write policy document
+
 data "aws_iam_policy_document" "instance_assume_role_policy"{
 statement {
   actions = ["sts:AssumeRole"]
@@ -143,5 +151,5 @@ resource "aws_iam_role" "nhi_automation_runner_role"{
 
 resource "aws_iam_role_policy_attachment" "nhi_automation_runner_role_attachment" {
   role       = aws_iam_role.nhi_automation_runner_role.name
-  policy_arn = aws_iam_policy.policy.arn
+  policy_arn = aws_iam_policy.role_policy.arn
 }
