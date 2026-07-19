@@ -61,8 +61,8 @@ resource "aws_iam_policy" "nhi_user_sts_policy" {
     Statement = [
       {
         #Removed S3 actions to maintain least privilege to the Python user and resource is now pointing to role created.
-        Action = ["sts:AssumeRole"]
-        Effect = "Allow"
+        Action   = ["sts:AssumeRole"]
+        Effect   = "Allow"
         Resource = aws_iam_role.nhi_automation_runner_role.arn
       }
     ]
@@ -89,12 +89,12 @@ resource "aws_s3_bucket" "nhi_automation_bucket" {
 #Added this below block to add Server side encryption - because on the disk and at rest the data needs to be encrypted, but for prod purposes we can use AWS KMS, for now we are just utilizing the AES256 algorithm instead of KMS
 #Why because of the data at rest is supposed to be encrypted - and Data at movement is projected by HTTPS and other networking components.
 
-resource "aws_s3_bucket_server_side_encryption_configuration" "encryption_resource"{
+resource "aws_s3_bucket_server_side_encryption_configuration" "encryption_resource" {
   bucket = aws_s3_bucket.nhi_automation_bucket.id
 
   rule {
     apply_server_side_encryption_by_default {
-      sse_algorithm     = "AES256"
+      sse_algorithm = "AES256"
     }
   }
 
@@ -131,22 +131,22 @@ resource "aws_s3_bucket_public_access_block" "nhi_automation_bucket_privacy" {
 
 # }#Rewrote the role below to not enforce jsonencode as we could write policy document
 
-data "aws_iam_policy_document" "instance_assume_role_policy"{
-statement {
-  actions = ["sts:AssumeRole"]
-  effect = "Allow"
+data "aws_iam_policy_document" "instance_assume_role_policy" {
+  statement {
+    actions = ["sts:AssumeRole"]
+    effect  = "Allow"
 
-principals{
-    type = "AWS"
-    identifiers = [aws_iam_user.nhi_automation_runner.arn]
-}
-}
+    principals {
+      type        = "AWS"
+      identifiers = [aws_iam_user.nhi_automation_runner.arn]
+    }
+  }
 }
 
-resource "aws_iam_role" "nhi_automation_runner_role"{
-    name = "nhi-automation-runner-role-${var.environment}"
-    path = "/"
-    assume_role_policy = data.aws_iam_policy_document.instance_assume_role_policy.json
+resource "aws_iam_role" "nhi_automation_runner_role" {
+  name               = "nhi-automation-runner-role-${var.environment}"
+  path               = "/"
+  assume_role_policy = data.aws_iam_policy_document.instance_assume_role_policy.json
 }
 
 resource "aws_iam_role_policy_attachment" "nhi_automation_runner_role_attachment" {
