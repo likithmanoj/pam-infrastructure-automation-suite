@@ -1,128 +1,209 @@
-```markdown
 # PAM Infrastructure Automation Suite
 
-This repository contains the foundational Terraform configurations to provision a secure, automated environment for privilege management operations.
-
-## 📝 Project Architecture Notes
-
-### 1. Variables & Custom Input Validation (`variables.tf`)
-The deployment configuration uses input variables to prevent hardcoded environments. The deployment scope is restricted via a custom validation block to ensure execution only occurs inside approved stages.
-
-```hcl
-variable "environment" {
-  type        = string
-  description = "The environment for the PAM automation suite"
-  default     = "dev"
-
-  validation {
-    condition     = contains(["dev", "test", "prod"], var.environment)
-    error_message = "The environment value must be one of: dev, test, prod."
-  }
-}
-
-variable "project_name" {
-  type        = string
-  description = "The name of the project"
-  default     = "pam-infrastructure-automation-suite"
-}
-
-```
-
-* **Validation Guardrail:** The `validation` statement ensures that the engine only accepts `dev`, `test`, or `prod` as accepted environment strings.
+> A security automation platform for provisioning, auditing, and migrating Non-Human Identities (NHIs) across enterprise Privileged Access Management (PAM) and cloud environments.
 
 ---
 
-### 2. Identity & Credentials (`main.tf`)
+## Overview
 
-We provision a dedicated, non-human IAM automation runner identity placed under a `/system/` path boundary, alongside its API access keys for programmatic execution.
+PAM Infrastructure Automation Suite is a long-term engineering project focused on automating the lifecycle of Non-Human Identities (NHIs), including service accounts, machine identities, API keys, and application credentials.
 
-```hcl
-resource "aws_iam_user" "nhi_automation_runner" {
-  name          = "nhi-automation-runner-${var.environment}"
-  path          = "/system/"
-  force_destroy = true
-
-  tags = {
-    Environment = var.environment
-  }
-}
-
-resource "aws_iam_access_key" "nhi_runner_keys" {
-  user = aws_iam_user.nhi_automation_runner.name
-}
-
-```
+The project combines Infrastructure as Code, cloud security, and Python automation to build reusable tooling inspired by real-world enterprise Identity and Access Management (IAM) and Privileged Access Management (PAM) operations.
 
 ---
 
-### 3. Dynamic Partitions & Least-Privilege IAM Policy (`main.tf`)
+# Why This Project Exists
 
-To ensure optimal security posture, we avoid global wildcard resources (`*`) and implement a strict **Least-Privilege Blast Radius**.
+Enterprise environments often manage thousands of non-human identities across cloud platforms and privileged access management solutions.
 
-```hcl
-data "aws_partition" "current" {}
+These identities are frequently:
 
-resource "aws_iam_policy" "policy" {
-  name        = "${var.project_name}-${var.environment}-s3-policy"
-  path        = "/"
-  description = "IAM policy for automation runner to access S3 buckets in ${var.environment} environment"
+- Created manually
+- Managed through support tickets
+- Audited using spreadsheets
+- Over-permissioned
+- Poorly documented
+- Rotated inconsistently
+- Difficult to migrate between PAM platforms
 
-  # Terraform's "jsonencode" function converts a
-  # Terraform expression result to valid JSON syntax.
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        # Allow the automation runner to perform S3 actions on the specified bucket when Python is run we need GetObject and PutObject permissions to read and write files to the S3 bucket
-        Action = ["s3:ListAllMyBuckets", "s3:ListBucket", "s3:GetObject", "s3:PutObject"]
-        Effect = "Allow"
-        Resource = [
-          "arn:${data.aws_partition.current.partition}:s3:::${var.project_name}-${var.environment}-bucket",
-          "arn:${data.aws_partition.current.partition}:s3:::${var.project_name}-${var.environment}-bucket/*"
-        ]
-      }
-    ]
-  })
-}
-
-```
-
-* **Dynamic Partitioning:** The `data "aws_partition" "current" {}` block fetches the active AWS partition dynamically at runtime. This data is passed into the IAM Policy resource to form precise ARNs instead of hardcoding standard partition paths.
-* **Targeted Operations:** The actions `s3:GetObject` and `s3:PutObject` are explicitly declared to grant the downstream Python engine permission to read and edit required data payloads inside the bucket boundary.
+This project aims to automate those operational workflows using modern cloud-native technologies while following security engineering best practices.
 
 ---
 
-### 4. Identity Policy Binding (`main.tf`)
+# Current Features
 
-The policy attachment resource explicitly links our custom least-privilege policy to the automation runner user identity.
+## Infrastructure Provisioning
 
-```hcl
-resource "aws_iam_user_policy_attachment" "nhi_runner_policy_attachment" {
-  user       = aws_iam_user.nhi_automation_runner.name
-  policy_arn = aws_iam_policy.policy.arn
-}
+- AWS IAM User provisioning
+- IAM Roles
+- IAM Trust Policies
+- IAM Permission Policies
+- IAM Role Policy Attachments
+- Environment-based deployments
+- Dynamic naming conventions
 
+## Amazon S3
+
+- Bucket provisioning
+- Public Access Block configuration
+- Secure infrastructure defaults
+
+## Python Automation
+
+- boto3 integration
+- Automated S3 uploads
+- Environment variable configuration
+- Error handling
+
+## Security
+
+- Least Privilege IAM Policies
+- Infrastructure as Code
+- IAM path separation
+- Trust-based role assumption
+- Security-first resource provisioning
+
+---
+
+# Project Architecture
+
+```text
+Terraform
+      │
+      ▼
+AWS Infrastructure
+      │
+      ├── IAM User
+      ├── IAM Role
+      ├── IAM Policies
+      └── Amazon S3
+              │
+              ▼
+Python (boto3)
+              │
+              ▼
+AWS APIs
 ```
 
 ---
 
-### 5. Deployment Outputs (`outputs.tf`)
+# Repository Structure
 
-Outputs expose the critical identifiers needed by external scripts to leverage this infrastructure layer safely.
+```text
+terraform/
+│
+├── main.tf
+├── variables.tf
+├── outputs.tf
+├── providers.tf
+└── terraform.tfvars
 
-```hcl
-output "nhi_automation_runner_arn" {
-  value       = aws_iam_user.nhi_automation_runner.arn
-  description = "The Amazon Resource Name (ARN) of the NHI Automation Runner IAM user"
-}
-
-output "nhi_automation_runner_access_key_id" {
-  value       = aws_iam_access_key.nhi_runner_keys.id
-  description = "The access key ID for the NHI Automation Runner IAM user"
-}
-
+automation_test.py
+README.md
+.gitignore
 ```
 
-```
+---
 
-```
+# Roadmap
+
+## Phase 1 — AWS Infrastructure Foundation
+
+### Completed
+
+- AWS IAM User provisioning
+- IAM Policy creation
+- IAM Role implementation
+- Trust Policy implementation
+- Role Policy Attachments
+- Amazon S3 provisioning
+- Public Access Block configuration
+- Python boto3 integration
+- Environment parameterization
+
+### In Progress
+
+- Remove unnecessary IAM permissions
+- Configure S3 Server-Side Encryption
+- Remote Terraform State (S3 Backend)
+- DynamoDB State Locking
+- AWS STS AssumeRole
+- Replace long-lived IAM User credentials with IAM Roles
+
+---
+
+## Phase 2 — CyberArk Foundation
+
+- Authentication
+- Safe discovery
+- Account discovery
+- Mock CyberArk API client
+- JSON export
+
+---
+
+## Phase 3 — NHI Audit Scanner
+
+Python-based security audit engine capable of identifying:
+
+- Dormant identities
+- Over-privileged IAM policies
+- Wildcard permissions
+- Missing credential rotation
+- Risk findings exported as JSON
+
+---
+
+## Phase 4 — Migration Toolkit
+
+Migration workflows for enterprise PAM platforms.
+
+Planned support includes:
+
+- CyberArk → AWS Secrets Manager
+- CyberArk → HashiCorp Vault
+
+---
+
+## Phase 5 — Production Readiness
+
+- Terraform Modules
+- Unit Tests
+- Logging
+- CI/CD
+- Architecture Documentation
+
+---
+
+# Engineering Principles
+
+This project is built around:
+
+- Infrastructure as Code
+- Least Privilege
+- Secure by Default
+- Zero Trust
+- Reusable Automation
+- Environment Isolation
+- Modular Infrastructure
+
+---
+
+# Project Goals
+
+- Automate provisioning of non-human identities
+- Reduce manual IAM and PAM administration
+- Build reusable Terraform modules
+- Automate cloud security tasks using Python
+- Demonstrate production-oriented security engineering practices
+- Explore migration paths between enterprise PAM platforms and cloud-native identity services
+
+---
+
+# Current Status
+
+**Status:** Active Development
+
+This repository is developed incrementally, with new functionality added and documented throughout each development phase.
+
+The roadmap and README are reviewed and updated approximately every two weeks.
