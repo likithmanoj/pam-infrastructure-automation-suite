@@ -1,8 +1,3 @@
-resource "aws_iam_user_policy_attachment" "nhi_runner_policy_attachment" {
-  user       = aws_iam_user.nhi_automation_runner.name
-  policy_arn = aws_iam_policy.nhi_user_sts_policy.arn
-}
-
 resource "aws_s3_bucket" "nhi_automation_bucket" {
 
   bucket        = "${var.project_name}-${var.environment}-bucket"
@@ -18,7 +13,7 @@ resource "aws_s3_bucket" "nhi_automation_bucket" {
 #Added this below block to add Server side encryption - because on the disk and at rest the data needs to be encrypted, but for prod purposes we can use AWS KMS, for now we are just utilizing the AES256 algorithm instead of KMS
 #Why because of the data at rest is supposed to be encrypted - and Data at movement is projected by HTTPS and other networking components.
 
-resource "aws_s3_bucket_server_side_encryption_configuration" "encryption_resource" {
+resource "aws_s3_bucket_server_side_encryption_configuration" "encryption_for_s3_bucket" {
   bucket = aws_s3_bucket.nhi_automation_bucket.id
 
   rule {
