@@ -74,41 +74,6 @@ resource "aws_iam_user_policy_attachment" "nhi_runner_policy_attachment" {
   policy_arn = aws_iam_policy.nhi_user_sts_policy.arn
 }
 
-resource "aws_s3_bucket" "nhi_automation_bucket" {
-
-  bucket        = "${var.project_name}-${var.environment}-bucket"
-  force_destroy = true
-  tags = {
-    Name        = "${var.project_name}-${var.environment}-bucket"
-    Environment = var.environment
-  }
-
-}
-
-
-#Added this below block to add Server side encryption - because on the disk and at rest the data needs to be encrypted, but for prod purposes we can use AWS KMS, for now we are just utilizing the AES256 algorithm instead of KMS
-#Why because of the data at rest is supposed to be encrypted - and Data at movement is projected by HTTPS and other networking components.
-
-resource "aws_s3_bucket_server_side_encryption_configuration" "encryption_resource" {
-  bucket = aws_s3_bucket.nhi_automation_bucket.id
-
-  rule {
-    apply_server_side_encryption_by_default {
-      sse_algorithm = "AES256"
-    }
-  }
-
-}
-
-resource "aws_s3_bucket_public_access_block" "nhi_automation_bucket_privacy" {
-  bucket = aws_s3_bucket.nhi_automation_bucket.id
-
-  block_public_acls       = true
-  block_public_policy     = true
-  ignore_public_acls      = true
-  restrict_public_buckets = true
-}
-
 #data "aws_caller_identity" "current_user" {} wrote it when I wanted to pull data #   AWS = "arn:aws:iam::${data.aws_caller_identity.current_user.account_id}:user/system/${aws_iam_user.nhi_automation_runner.name}"
 
 # resource "aws_iam_role" "nhi_automation_runner_role" {
