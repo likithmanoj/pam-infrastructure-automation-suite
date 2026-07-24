@@ -1,14 +1,23 @@
 import boto3
 import os
 import botocore
+sts_client = boto3.client('sts')
 
-s3_client = boto3.client('s3')
-# bucket_output = os.environ.get("bucket_output", "your-default-bucket-name-failed")
-# print(f"Bucket output: {bucket_output}") for testing to check if python is actually getting the bucket name from the environment variable or not
-BUCKET_NAME = os.environ.get("BUCKET_NAME", "pam-infrastructure-automation-suite-dev-bucket")
+# TODO:
+# For learning purposes, retrieve the Role ARN dynamically using the IAM API.
+# In production, inject the Role ARN via configuration (Terraform output,
+# environment variables, or deployment pipeline) to avoid the extra API call.
+ROLE_ARN = os.environ["ROLE_ARN"]
 
+
+response = sts_client.assume_role(
+RoleArn = ROLE_ARN,
+RoleSessionName = 'testAssumeRoleSession')
+credentials =  response['Credentials']
+
+s3_client = boto3.client('s3',aws_access_key_id = credentials['AccessKeyId'], aws_secret_access_key = credentials['SecretAccessKey'], aws_session_token  = credentials['SessionToken'])
+BUCKET_NAME = os.environ.get("BUCKET_NAME")
 file_name = "test_file.txt"
-
 with open(file_name, "w") as f:
     f.write("This is a test file for S3 upload.")
 

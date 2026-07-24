@@ -44,10 +44,7 @@ resource "aws_iam_policy" "role_policy" {
           # "arn:${data.aws_partition.current.partition}:s3:::${var.project_name}-${var.environment}-bucket", #Replacing with non json and just making terraform more readable by forcing the arn to point to existing object arns
           # "arn:${data.aws_partition.current.partition}:s3:::${var.project_name}-${var.environment}-bucket/*",
           aws_s3_bucket.nhi_automation_bucket.arn,
-          "${aws_s3_bucket.nhi_automation_bucket.arn}/*",
-          aws_s3_bucket.remote_state_bucket.arn,
-          "${aws_s3_bucket.remote_state_bucket.arn}/*"
-        ]
+          "${aws_s3_bucket.nhi_automation_bucket.arn}/*"]
       }
     ]
   })

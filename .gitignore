@@ -30,3 +30,7 @@ experiments/
 # Local debugging files
 state.json
 terraform/state.json
+admin.sh
+runner.sh
+keys.env
+.env
